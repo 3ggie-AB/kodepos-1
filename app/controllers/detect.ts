@@ -9,9 +9,9 @@ export const detect = (app: FastifyInstance) => {
 
     if (
       typeof latitude === 'undefined' ||
-      latitude.toString().trim() === '' ||
+      Number.isNaN(latitude) ||
       typeof longitude === 'undefined' ||
-      longitude.toString().trim() === ''
+      Number.isNaN(longitude)
     ) {
       return sendBadRequest(reply, "The 'latitude' and 'longitude' parameters is required.")
     }
