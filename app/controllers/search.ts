@@ -1,29 +1,53 @@
+import Fuse from 'fuse.js'
 import { SearchQueries } from '../../types'
 import { createSpecResponse, sendBadRequest } from '../helpers/spec'
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
 
 export const search = (app: FastifyInstance) => {
-  return async (request: FastifyRequest<{ Querystring: SearchQueries }>, reply: FastifyReply) => {
-    const { q } = request.query
-    // TODO: search by province, regency, or district
+  return async (request: FastifyRequest, reply: FastifyReply) => {
+    const queryParams = request.query as Record<string, string | undefined>
 
-    if (typeof q === 'undefined' || q.trim() === '') {
-      return sendBadRequest(reply, "The 'q' parameter is required.")
+    const validKeys = [
+      'code',
+      'village',
+      'district',
+      'regency',
+      'province',
+      'latitude',
+      'longitude',
+      'elevation',
+      'timezone',
+    ]
+
+    const filters = Object.fromEntries(
+      Object.entries(queryParams).filter(([key, value]) => value && validKeys.includes(key))
+    )
+
+    if (Object.keys(filters).length === 0) {
+      const response = createSpecResponse(app.data || [])
+      reply.header('Cache-Control', 's-maxage=86400, stale-while-revalidate=604800')
+      return reply.send(response)
     }
 
-    const keywords = q
-      // remove duplicate spaces
-      .replace(/\s+/g, ' ')
-      .split(' ')
-      // add extended search per word
-      // https://www.fusejs.io/examples.html#extended-search
-      .map((i) => `'${i}`)
-      .join(' ')
 
-    const data = app.fuse.search(keywords, { limit: 20 })
-    const result = data.map(({ item: { fulltext, ...rest } }) => rest)
+    let result: any[] = app.data || []
+
+    for (const [key, value] of Object.entries(filters)) {
+      if (!value) continue
+
+      if (/^-?\d+(\.\d+)?$/.test(value)) {
+        result = result.filter((item) => String(item[key]) === value)
+      } else {
+        const fuse = new Fuse(result, {
+          keys: [key],
+          threshold: 0.3,
+        })
+        const found = fuse.search(value)
+        result = found.map(({ item }) => item)
+      }
+    }
+
     const response = createSpecResponse(result)
-
     reply.header('Cache-Control', 's-maxage=86400, stale-while-revalidate=604800')
     return reply.send(response)
   }

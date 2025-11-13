@@ -7,11 +7,28 @@ export const home = async (
   reply: FastifyReply
 ) => {
   const { q } = request.query
+  const baseurl = `${request.protocol}://${request.hostname}`
 
   if (typeof q !== 'undefined' && q.trim() !== '') {
-    const baseurl = `${request.protocol}://${request.hostname}`
-    return reply.redirect(301, `${baseurl}/search/?${qs.stringify(request.query)}`)
+    return reply.status(200).send({
+      status: 'success',
+      message: 'Redirect handled as JSON',
+      query: request.query,
+      redirect_url: `${baseurl}/search/?${qs.stringify(request.query)}`,
+      author: {
+        name: 'Egi Ahmad Baihaqi',
+        role: 'Development IT'
+      }
+    })
   }
 
-  return reply.redirect(302, 'https://github.com/sooluh/kodepos')
+  return reply.status(200).send({
+    status: 'info',
+    message: 'Tidak ada parameter pencarian. Lihat dokumentasi di GitHub.',
+    forked_from: 'https://github.com/sooluh/kodepos',
+    edited_by: {
+      name: 'Egi Ahmad Baihaqi',
+      role: 'Development IT'
+    }
+  })
 }
